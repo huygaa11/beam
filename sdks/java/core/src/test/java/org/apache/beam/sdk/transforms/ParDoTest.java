@@ -1551,6 +1551,7 @@ public class ParDoTest implements Serializable {
           private final StateSpec<ValueState<Integer>> intState =
               StateSpecs.value(VarIntCoder.of());
 
+          
           @ProcessElement
           public void processElement(
               ProcessContext c, @StateId(stateId) ValueState<Integer> state) {
