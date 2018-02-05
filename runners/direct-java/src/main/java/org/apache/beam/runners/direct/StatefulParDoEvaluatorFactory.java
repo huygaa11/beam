@@ -68,7 +68,7 @@ final class StatefulParDoEvaluatorFactory<K, InputT, OutputT> implements Transfo
     this.delegateFactory =
         new ParDoEvaluatorFactory<>(
             evaluationContext,
-            ParDoEvaluator.<KV<K, InputT>, OutputT>defaultRunnerFactory(),
+            ParDoEvaluator.<KV<K, InputT>, OutputT>defaultStatefulRunnerFactory(),
             new CacheLoader<AppliedPTransform<?, ?, ?>, DoFnLifecycleManager>() {
               @Override
               public DoFnLifecycleManager load(AppliedPTransform<?, ?, ?> appliedStatefulParDo)

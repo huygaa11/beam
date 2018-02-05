@@ -29,9 +29,11 @@ import org.apache.beam.runners.core.DoFnRunners.OutputManager;
 import org.apache.beam.runners.core.PushbackSideInputDoFnRunner;
 import org.apache.beam.runners.core.ReadyCheckingSideInputReader;
 import org.apache.beam.runners.core.SimplePushbackSideInputDoFnRunner;
+import org.apache.beam.runners.core.StatefulDoFnRunner;
 import org.apache.beam.runners.core.TimerInternals.TimerData;
 import org.apache.beam.runners.direct.DirectExecutionContext.DirectStepContext;
 import org.apache.beam.runners.local.StructuralKey;
+import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.runners.AppliedPTransform;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -78,6 +80,50 @@ class ParDoEvaluator<InputT> implements TransformEvaluator<InputT> {
               additionalOutputTags,
               stepContext,
               windowingStrategy);
+      return SimplePushbackSideInputDoFnRunner.create(underlying, sideInputs, sideInputReader);
+    };
+  }
+
+  public static <InputT, OutputT> DoFnRunnerFactory<InputT, OutputT> defaultStatefulRunnerFactory() {
+    return (options,
+        fn,
+        sideInputs,
+        sideInputReader,
+        outputManager,
+        mainOutputTag,
+        additionalOutputTags,
+        stepContext,
+        windowingStrategy) -> {
+      DoFnRunner<InputT, OutputT> simpleRunner =
+          DoFnRunners.simpleRunner(
+              options,
+              fn,
+              sideInputReader,
+              outputManager,
+              mainOutputTag,
+              additionalOutputTags,
+              stepContext,
+              windowingStrategy);
+
+      StatefulDoFnRunner.CleanupTimer cleanupTimer =
+          new StatefulDoFnRunner.TimeInternalsCleanupTimer(
+              stepContext.timerInternals(), windowingStrategy);
+
+      @SuppressWarnings({"rawtypes"})
+      Coder windowCoder = windowingStrategy.getWindowFn().windowCoder();
+
+      @SuppressWarnings({"unchecked"})
+      StatefulDoFnRunner.StateCleaner<?> stateCleaner =
+          new StatefulDoFnRunner.StateInternalsStateCleaner<>(
+              fn, stepContext.stateInternals(), windowCoder);
+
+      DoFnRunner<InputT, OutputT> underlying = DoFnRunners.defaultStatefulDoFnRunner(
+          fn,
+          simpleRunner,
+          windowingStrategy,
+          cleanupTimer,
+          stateCleaner);
+
       return SimplePushbackSideInputDoFnRunner.create(underlying, sideInputs, sideInputReader);
     };
   }

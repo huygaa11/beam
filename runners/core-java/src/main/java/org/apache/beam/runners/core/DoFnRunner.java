@@ -44,6 +44,9 @@ public interface DoFnRunner<InputT, OutputT> {
    */
   void onTimer(String timerId, BoundedWindow window, Instant timestamp, TimeDomain timeDomain);
 
+
+  void onWindowExpiration(BoundedWindow window);
+
   /**
    * Calls a {@link DoFn DoFn's} {@link DoFn.FinishBundle @FinishBundle} method and performs
    * additional tasks, such as flushing in-memory states.

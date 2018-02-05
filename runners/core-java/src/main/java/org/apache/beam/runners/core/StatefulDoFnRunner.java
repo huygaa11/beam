@@ -113,9 +113,10 @@ public class StatefulDoFnRunner<InputT, OutputT, W extends BoundedWindow>
   public void onTimer(
       String timerId, BoundedWindow window, Instant timestamp, TimeDomain timeDomain) {
     if (cleanupTimer.isForWindow(timerId, window, timestamp, timeDomain)) {
+      doFnRunner.onWindowExpiration(window);
       stateCleaner.clearForWindow(window);
-      // There should invoke the onWindowExpiration of DoFn
-    } else {
+    }
+    else {
       // An event-time timer can never be late because we don't allow setting timers after GC time.
       // Ot can happen that a processing-time time fires for a late window, we need to ignore
       // this.
@@ -129,6 +130,11 @@ public class StatefulDoFnRunner<InputT, OutputT, W extends BoundedWindow>
         doFnRunner.onTimer(timerId, window, timestamp, timeDomain);
       }
     }
+  }
+
+  @Override
+  public void onWindowExpiration(BoundedWindow window) {
+    doFnRunner.onWindowExpiration(window);
   }
 
   @Override
@@ -186,7 +192,7 @@ public class StatefulDoFnRunner<InputT, OutputT, W extends BoundedWindow>
      * The amount of milliseconds by which to delay cleanup. We use this to ensure that state is
      * still available when a user timer for {@code window.maxTimestamp()} fires.
      */
-    public static final long GC_DELAY_MS = 1;
+    public static final long GC_DELAY_MS = 0;
 
     private final TimerInternals timerInternals;
     private final WindowingStrategy<?, ?> windowingStrategy;
@@ -210,7 +216,7 @@ public class StatefulDoFnRunner<InputT, OutputT, W extends BoundedWindow>
     public void setForWindow(BoundedWindow window) {
       Instant gcTime = LateDataUtils.garbageCollectionTime(window, windowingStrategy);
       // make sure this fires after any window.maxTimestamp() timers
-      gcTime = gcTime.plus(GC_DELAY_MS);
+      gcTime = gcTime.minus(GC_DELAY_MS);
       timerInternals.setTimer(StateNamespaces.window(windowCoder, window),
           GC_TIMER_ID, gcTime, TimeDomain.EVENT_TIME);
     }
@@ -223,7 +229,7 @@ public class StatefulDoFnRunner<InputT, OutputT, W extends BoundedWindow>
         TimeDomain timeDomain) {
       boolean isEventTimer = timeDomain.equals(TimeDomain.EVENT_TIME);
       Instant gcTime = LateDataUtils.garbageCollectionTime(window, windowingStrategy);
-      gcTime = gcTime.plus(GC_DELAY_MS);
+      gcTime = gcTime.minus(GC_DELAY_MS);
       return isEventTimer && GC_TIMER_ID.equals(timerId) && gcTime.equals(timestamp);
     }
   }

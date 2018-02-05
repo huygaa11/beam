@@ -21,7 +21,6 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterables;
 import org.apache.beam.runners.core.metrics.CounterCell;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
-import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.util.WindowTracing;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.WindowingStrategy;
@@ -52,14 +51,15 @@ public class LateDataUtils {
     // If the end of the window + allowed lateness is beyond the "end of time" aka the end of the
     // global window, then we truncate it. The conditional is phrased like it is because the
     // addition of EOW + allowed lateness might even overflow the maximum allowed Instant
-    if (GlobalWindow.INSTANCE
-        .maxTimestamp()
-        .minus(allowedLateness)
-        .isBefore(window.maxTimestamp())) {
-      return GlobalWindow.INSTANCE.maxTimestamp();
-    } else {
-      return window.maxTimestamp().plus(allowedLateness);
-    }
+    // if (GlobalWindow.INSTANCE
+    //     .maxTimestamp()
+    //     .minus(allowedLateness)
+    //     .isBefore(window.maxTimestamp())) {
+    //   return GlobalWindow.INSTANCE.maxTimestamp();
+    // } else {
+    //   return window.maxTimestamp().plus(allowedLateness);
+    // }
+    return window.maxTimestamp().plus(allowedLateness);
   }
 
   /**

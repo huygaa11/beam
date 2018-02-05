@@ -271,6 +271,9 @@ public class SimplePushbackSideInputDoFnRunnerTest {
     }
 
     @Override
+    public void onWindowExpiration(BoundedWindow window) {}
+
+    @Override
     public void finishBundle() {
       finished = true;
     }

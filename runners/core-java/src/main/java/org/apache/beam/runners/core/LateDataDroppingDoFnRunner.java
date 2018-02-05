@@ -81,6 +81,11 @@ public class LateDataDroppingDoFnRunner<K, InputT, OutputT, W extends BoundedWin
   }
 
   @Override
+  public void onWindowExpiration(BoundedWindow window) {
+    doFnRunner.onWindowExpiration(window);
+  }
+
+  @Override
   public void finishBundle() {
     doFnRunner.finishBundle();
   }
