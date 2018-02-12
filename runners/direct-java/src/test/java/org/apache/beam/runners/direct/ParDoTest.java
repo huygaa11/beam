@@ -146,25 +146,34 @@ public class ParDoTest implements Serializable {
             state.write(currentValue + 1);
 
             // c.output(currentValue);
-            timer.align(Duration.standardDays(10)).setRelative();
+            // timer.align(Duration.standardDays(10)).setRelative();
           }
 
           @OnTimer(timerId)
           public void onTimer(
-              OnTimerContext c,
+              OnWindowExpirationContext c,
               @StateId(stateId) ValueState<Integer> state) {
-            System.out.println("timer fired");
             System.out.println("timer state: " + state.read());
-            c.output(999);
+            // c.output(999);
           }
 
           @OnWindowExpiration
           public void bla(
-              OnTimerContext c,
+              OnWindowExpirationContext c,
               @StateId(stateId) ValueState<Integer> state) {
-            System.out.println("Yoo");
             System.out.println("window state: " + state.read());
             c.output(100);
+          }
+        };
+
+    DoFn<Integer, Integer> fn1 =
+        new DoFn<Integer, Integer>() {
+          @ProcessElement
+          public void processElement(
+              ProcessContext c) {
+            System.out.println("passed element: " + c.element());
+            System.out.println("passed timestamp: " + c.timestamp());
+            c.output(c.element());
           }
         };
 
@@ -179,9 +188,11 @@ public class ParDoTest implements Serializable {
             .advanceWatermarkTo(new Instant(0).plus(Duration.standardDays(20)))
             .advanceWatermarkToInfinity();
 
-    PCollection<Integer> output = pipeline.apply(stream).apply(ParDo.of(fn));
+    PCollection<Integer> output = pipeline.apply(stream)
+        .apply("first", ParDo.of(fn))
+        .apply("second", ParDo.of(fn1));
 
-    PAssert.that(output).containsInAnyOrder(999, 100);
+    PAssert.that(output).containsInAnyOrder(100);
     pipeline.run();
   }
 }

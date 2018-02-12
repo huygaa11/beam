@@ -761,6 +761,7 @@ public class ReduceFnRunner<K, InputT, OutputT, W extends BoundedWindow> {
 
         // Cleanup flavor B: Clear all the remaining state for this window since we'll never
         // see elements for it again.
+
         clearAllState(directContext, renamedContext, windowIsActiveAndOpen);
       } else {
         WindowTracing.debug(

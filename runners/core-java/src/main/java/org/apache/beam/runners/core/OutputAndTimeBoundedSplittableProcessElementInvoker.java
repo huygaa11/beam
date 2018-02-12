@@ -32,6 +32,7 @@ import org.apache.beam.sdk.state.State;
 import org.apache.beam.sdk.state.Timer;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFn.FinishBundleContext;
+import org.apache.beam.sdk.transforms.DoFn.OnWindowExpirationContext;
 import org.apache.beam.sdk.transforms.DoFn.StartBundleContext;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvoker;
 import org.apache.beam.sdk.transforms.splittabledofn.RestrictionTracker;
@@ -141,6 +142,12 @@ public class OutputAndTimeBoundedSplittableProcessElementInvoker<
           @Override
           public DoFn<InputT, OutputT>.OnTimerContext onTimerContext(
               DoFn<InputT, OutputT> doFn) {
+            throw new UnsupportedOperationException(
+                "Access to timers not supported in Splittable DoFn");
+          }
+
+          @Override
+          public OnWindowExpirationContext onWindowExpirationContext(DoFn<InputT, OutputT> doFn) {
             throw new UnsupportedOperationException(
                 "Access to timers not supported in Splittable DoFn");
           }

@@ -404,6 +404,7 @@ class CopyOnAccessInMemoryStateInternals<K> implements StateInternals {
                 Instant hold = ((WatermarkHoldState) state).read();
                 if (hold != null && hold.isBefore(earliestHold)) {
                   earliestHold = hold;
+                  System.out.println("hold set");
                 }
               }
             }

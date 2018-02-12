@@ -304,7 +304,7 @@ public abstract class DoFn<InputT, OutputT> implements Serializable, HasDisplayD
   /**
    * Information accessible when running a {@link DoFn.OnTimer} method.
    */
-  public abstract class OnTimerContext extends WindowedContext {
+  public abstract class OnTimerContext extends OnWindowExpirationContext {
 
     /**
      * Returns the timestamp of the current timer.
@@ -321,6 +321,13 @@ public abstract class DoFn<InputT, OutputT> implements Serializable, HasDisplayD
      */
     public abstract TimeDomain timeDomain();
   }
+
+    public abstract class OnWindowExpirationContext extends WindowedContext {
+      /**
+       * Returns the window in which the timer is firing.
+       */
+      public abstract BoundedWindow window();
+    }
 
   /**
    * Returns the allowed timestamp skew duration, which is the maximum duration that timestamps can

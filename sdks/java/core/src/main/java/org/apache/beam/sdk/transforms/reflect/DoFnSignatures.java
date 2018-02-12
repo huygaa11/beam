@@ -94,6 +94,7 @@ public class DoFnSignatures {
   private static final Collection<Class<? extends Parameter>>
       ALLOWED_ON_TIMER_PARAMETERS =
           ImmutableList.of(
+              Parameter.OnWindowExpirationContextParameter.class,
               Parameter.OnTimerContextParameter.class,
               Parameter.WindowParameter.class,
               Parameter.PipelineOptionsParameter.class,
@@ -103,7 +104,8 @@ public class DoFnSignatures {
   private static final Collection<Class<? extends Parameter>>
       ALLOWED_ON_WINDOW_EXPIRATION_PARAMETERS =
       ImmutableList.of(
-          // TODO: Add support for the output parameter.
+          Parameter.OnWindowExpirationContextParameter.class,
+          Parameter.OnTimerContextParameter.class,
           Parameter.WindowParameter.class,
           Parameter.PipelineOptionsParameter.class,
           Parameter.StateParameter.class);
@@ -675,6 +677,18 @@ public class DoFnSignatures {
         .where(new TypeParameter<OutputT>() {}, outputT);
   }
 
+  /**
+   * Generates a {@link TypeDescriptor} for {@code DoFn<InputT, OutputT>.Context} given {@code
+   * InputT} and {@code OutputT}.
+   */
+  private static <InputT, OutputT>
+  TypeDescriptor<DoFn<InputT, OutputT>.OnWindowExpirationContext> doFnOnWindowExpirationContextTypeOf(
+      TypeDescriptor<InputT> inputT, TypeDescriptor<OutputT> outputT) {
+    return new TypeDescriptor<DoFn<InputT, OutputT>.OnWindowExpirationContext>() {}.where(
+        new TypeParameter<InputT>() {}, inputT)
+        .where(new TypeParameter<OutputT>() {}, outputT);
+  }
+
   @VisibleForTesting
   static DoFnSignature.OnTimerMethod analyzeOnTimerMethod(
       ErrorReporter errors,
@@ -857,6 +871,7 @@ public class DoFnSignatures {
 
     TypeDescriptor<?> expectedProcessContextT = doFnProcessContextTypeOf(inputT, outputT);
     TypeDescriptor<?> expectedOnTimerContextT = doFnOnTimerContextTypeOf(inputT, outputT);
+    TypeDescriptor<?> expectedOnWindowExpirationContextT = doFnOnWindowExpirationContextTypeOf(inputT, outputT);
 
     TypeDescriptor<?> paramT = param.getType();
     Class<?> rawType = paramT.getRawType();
@@ -874,6 +889,12 @@ public class DoFnSignatures {
           "OnTimerContext argument must have type %s",
           formatType(expectedOnTimerContextT));
       return Parameter.onTimerContext();
+    }  else if (rawType.equals(DoFn.OnWindowExpirationContext.class)) {
+      paramErrors.checkArgument(
+          paramT.equals(expectedOnWindowExpirationContextT),
+          "OnWindowExpirationContext argument must have type %s",
+          formatType(expectedOnWindowExpirationContextT));
+      return Parameter.onWindowExpirationContext();
     } else if (BoundedWindow.class.isAssignableFrom(rawType)) {
       methodErrors.checkArgument(
           !methodContext.hasWindowParameter(),

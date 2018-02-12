@@ -57,13 +57,16 @@ import org.apache.beam.runners.core.TimerInternals.TimerData;
 import org.apache.beam.runners.core.construction.TransformInputs;
 import org.apache.beam.runners.local.StructuralKey;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.io.Read.Bounded;
 import org.apache.beam.sdk.runners.AppliedPTransform;
 import org.apache.beam.sdk.state.TimeDomain;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.PValue;
+import org.joda.time.Duration;
 import org.joda.time.Instant;
 
 /**
@@ -407,10 +410,23 @@ class WatermarkManager {
     @Override
     public synchronized WatermarkUpdate refresh() {
       Instant oldWatermark = currentWatermark.get();
+      Instant time = BoundedWindow.TIMESTAMP_MAX_VALUE;
+      if (inputWatermark.getEarliestTimerTimestamp().compareTo(BoundedWindow.TIMESTAMP_MAX_VALUE) < 0
+          && inputWatermark.getEarliestTimerTimestamp().compareTo(GlobalWindow.TIMESTAMP_MAX_VALUE) > 0) {
+        System.out.println("EARLIEST: " + inputWatermark.getEarliestTimerTimestamp());
+      }
+
+      if (inputWatermark.getEarliestTimerTimestamp().compareTo(GlobalWindow.INSTANCE.maxTimestamp()) > 0 &&
+          inputWatermark.getEarliestTimerTimestamp().compareTo(BoundedWindow.TIMESTAMP_MAX_VALUE) < 0 ) {
+        time = GlobalWindow.INSTANCE.maxTimestamp();
+        System.out.println("TIME: " + inputWatermark.getEarliestTimerTimestamp());
+      }
+
       Instant newWatermark = INSTANT_ORDERING.min(
           inputWatermark.get(),
           inputWatermark.getEarliestTimerTimestamp(),
-          holds.getMinHold());
+          holds.getMinHold(),
+          time);
       newWatermark = INSTANT_ORDERING.max(oldWatermark, newWatermark);
       currentWatermark.set(newWatermark);
       return WatermarkUpdate.fromTimestamps(oldWatermark, newWatermark);

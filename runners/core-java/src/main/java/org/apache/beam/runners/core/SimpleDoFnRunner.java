@@ -36,7 +36,9 @@ import org.apache.beam.sdk.state.TimeDomain;
 import org.apache.beam.sdk.state.Timer;
 import org.apache.beam.sdk.state.TimerSpec;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn.OnWindowExpirationContext;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvoker;
+import org.apache.beam.sdk.transforms.reflect.DoFnInvoker.ArgumentProvider;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvokers;
 import org.apache.beam.sdk.transforms.reflect.DoFnSignature;
 import org.apache.beam.sdk.transforms.reflect.DoFnSignatures;
@@ -171,6 +173,13 @@ public class SimpleDoFnRunner<InputT, OutputT> implements DoFnRunner<InputT, Out
     invoker.invokeOnTimer(timerId, argumentProvider);
   }
 
+  @Override
+  public void onWindowExpiration(BoundedWindow window) {
+    // ArgumentProvider argumentProvider = new OnWindowExpirationArgumentProvider(window, window.maxTimestamp());
+    ArgumentProvider argumentProvider = new OnWindowExpirationArgumentProvider(window, window.maxTimestamp());
+    invoker.invokeOnWindowExpiration(argumentProvider);
+  }
+
   private void invokeProcessElement(WindowedValue<InputT> elem) {
     // This can contain user code. Wrap it in case it throws an exception.
     try {
@@ -262,6 +271,11 @@ public class SimpleDoFnRunner<InputT, OutputT> implements DoFnRunner<InputT, Out
     }
 
     @Override
+    public OnWindowExpirationContext onWindowExpirationContext(DoFn<InputT, OutputT> doFn) {
+      return null;
+    }
+
+    @Override
     public RestrictionTracker<?> restrictionTracker() {
       throw new UnsupportedOperationException(
           "Cannot access RestrictionTracker outside of @ProcessElement method.");
@@ -329,6 +343,12 @@ public class SimpleDoFnRunner<InputT, OutputT> implements DoFnRunner<InputT, Out
     public DoFn<InputT, OutputT>.OnTimerContext onTimerContext(DoFn<InputT, OutputT> doFn) {
       throw new UnsupportedOperationException(
           "Cannot access OnTimerContext outside of @OnTimer methods.");
+    }
+
+    @Override
+    public OnWindowExpirationContext onWindowExpirationContext(DoFn<InputT, OutputT> doFn) {
+      throw new UnsupportedOperationException(
+          "Cannot access OnWindowExpirationContext outside of @OnTimer methods.");
     }
 
     @Override
@@ -504,6 +524,11 @@ public class SimpleDoFnRunner<InputT, OutputT> implements DoFnRunner<InputT, Out
     }
 
     @Override
+    public OnWindowExpirationContext onWindowExpirationContext(DoFn<InputT, OutputT> doFn) {
+      return null;
+    }
+
+    @Override
     public RestrictionTracker<?> restrictionTracker() {
       throw new UnsupportedOperationException("RestrictionTracker parameters are not supported.");
     }
@@ -611,6 +636,141 @@ public class SimpleDoFnRunner<InputT, OutputT> implements DoFnRunner<InputT, Out
 
     @Override
     public DoFn<InputT, OutputT>.OnTimerContext onTimerContext(DoFn<InputT, OutputT> doFn) {
+      return this;
+    }
+
+    @Override
+    public OnWindowExpirationContext onWindowExpirationContext(DoFn<InputT, OutputT> doFn) {
+      System.out.println("AAAAA");
+      return this;
+    }
+
+    @Override
+    public RestrictionTracker<?> restrictionTracker() {
+      throw new UnsupportedOperationException("RestrictionTracker parameters are not supported.");
+    }
+
+    @Override
+    public State state(String stateId) {
+      try {
+        StateSpec<?> spec =
+            (StateSpec<?>) signature.stateDeclarations().get(stateId).field().get(fn);
+        return stepContext
+            .stateInternals()
+            .state(getNamespace(), StateTags.tagForSpec(stateId, (StateSpec) spec));
+      } catch (IllegalAccessException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    public Timer timer(String timerId) {
+      try {
+        TimerSpec spec =
+            (TimerSpec) signature.timerDeclarations().get(timerId).field().get(fn);
+        return new TimerInternalsTimer(
+            window, getNamespace(), timerId, spec, stepContext.timerInternals());
+      } catch (IllegalAccessException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    @Override
+    public PipelineOptions getPipelineOptions() {
+      return options;
+    }
+
+    @Override
+    public void output(OutputT output) {
+      output(mainOutputTag, output);
+    }
+
+    @Override
+    public void outputWithTimestamp(OutputT output, Instant timestamp) {
+      outputWithTimestamp(mainOutputTag, output, timestamp);
+    }
+
+    @Override
+    public <T> void output(TupleTag<T> tag, T output) {
+      outputWindowedValue(tag, WindowedValue.of(output, timestamp, window(), PaneInfo.NO_FIRING));
+    }
+
+    @Override
+    public <T> void outputWithTimestamp(TupleTag<T> tag, T output, Instant timestamp) {
+      outputWindowedValue(tag, WindowedValue.of(output, timestamp, window(), PaneInfo.NO_FIRING));
+    }
+  }
+
+  /**
+   * A concrete implementation of {@link DoFnInvoker.ArgumentProvider} used for running a {@link
+   * DoFn} on a timer.
+   */
+  private class OnWindowExpirationArgumentProvider
+      extends DoFn<InputT, OutputT>.OnWindowExpirationContext
+      implements DoFnInvoker.ArgumentProvider<InputT, OutputT> {
+    private final BoundedWindow window;
+    private final Instant timestamp;
+
+    /** Lazily initialized; should only be accessed via {@link #getNamespace()}. */
+    private @Nullable StateNamespace namespace;
+
+    /**
+     * The state namespace for this context.
+     *
+     * <p>Any call to this method when more than one window is present will crash; this
+     * represents a bug in the runner or the {@link DoFnSignature}, since values must be in exactly
+     * one window when state or timers are relevant.
+     */
+    private StateNamespace getNamespace() {
+      if (namespace == null) {
+        namespace = StateNamespaces.window(windowCoder, window);
+      }
+      return namespace;
+    }
+
+    private OnWindowExpirationArgumentProvider(
+        BoundedWindow window,
+        Instant timestamp) {
+      fn.super();
+      this.window = window;
+      this.timestamp = timestamp;
+    }
+
+    @Override
+    public BoundedWindow window() {
+      return window;
+    }
+
+    @Override
+    public PipelineOptions pipelineOptions() {
+      return getPipelineOptions();
+    }
+
+    @Override
+    public DoFn<InputT, OutputT>.StartBundleContext startBundleContext(DoFn<InputT, OutputT> doFn) {
+      throw new UnsupportedOperationException("StartBundleContext parameters are not supported.");
+    }
+
+    @Override
+    public DoFn<InputT, OutputT>.FinishBundleContext finishBundleContext(
+        DoFn<InputT, OutputT> doFn) {
+      throw new UnsupportedOperationException("FinishBundleContext parameters are not supported.");
+    }
+
+
+    @Override
+    public DoFn<InputT, OutputT>.ProcessContext processContext(DoFn<InputT, OutputT> doFn) {
+      throw new UnsupportedOperationException("ProcessContext parameters are not supported.");
+    }
+
+    @Override
+    public DoFn<InputT, OutputT>.OnTimerContext onTimerContext(DoFn<InputT, OutputT> doFn) {
+      throw new UnsupportedOperationException("OnTimerContext parameters are not supported.");
+    }
+
+    @Override
+    public OnWindowExpirationContext onWindowExpirationContext(DoFn<InputT, OutputT> doFn) {
+      System.out.println("called onWindowExpirationContext");
       return this;
     }
 

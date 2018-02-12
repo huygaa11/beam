@@ -192,7 +192,7 @@ public class StatefulDoFnRunner<InputT, OutputT, W extends BoundedWindow>
      * The amount of milliseconds by which to delay cleanup. We use this to ensure that state is
      * still available when a user timer for {@code window.maxTimestamp()} fires.
      */
-    public static final long GC_DELAY_MS = 0;
+    public static final long GC_DELAY_MS = 1;
 
     private final TimerInternals timerInternals;
     private final WindowingStrategy<?, ?> windowingStrategy;
@@ -216,7 +216,7 @@ public class StatefulDoFnRunner<InputT, OutputT, W extends BoundedWindow>
     public void setForWindow(BoundedWindow window) {
       Instant gcTime = LateDataUtils.garbageCollectionTime(window, windowingStrategy);
       // make sure this fires after any window.maxTimestamp() timers
-      gcTime = gcTime.minus(GC_DELAY_MS);
+      gcTime = gcTime.plus(GC_DELAY_MS);
       timerInternals.setTimer(StateNamespaces.window(windowCoder, window),
           GC_TIMER_ID, gcTime, TimeDomain.EVENT_TIME);
     }
@@ -229,7 +229,7 @@ public class StatefulDoFnRunner<InputT, OutputT, W extends BoundedWindow>
         TimeDomain timeDomain) {
       boolean isEventTimer = timeDomain.equals(TimeDomain.EVENT_TIME);
       Instant gcTime = LateDataUtils.garbageCollectionTime(window, windowingStrategy);
-      gcTime = gcTime.minus(GC_DELAY_MS);
+      gcTime = gcTime.plus(GC_DELAY_MS);
       return isEventTimer && GC_TIMER_ID.equals(timerId) && gcTime.equals(timestamp);
     }
   }

@@ -191,6 +191,8 @@ public abstract class DoFnSignature {
         return cases.dispatch((ProcessContextParameter) this);
       } else if (this instanceof OnTimerContextParameter) {
         return cases.dispatch((OnTimerContextParameter) this);
+      } else if (this instanceof OnWindowExpirationContextParameter) {
+        return cases.dispatch((OnWindowExpirationContextParameter) this);
       } else if (this instanceof WindowParameter) {
         return cases.dispatch((WindowParameter) this);
       } else if (this instanceof RestrictionTrackerParameter) {
@@ -216,6 +218,7 @@ public abstract class DoFnSignature {
       ResultT dispatch(FinishBundleContextParameter p);
       ResultT dispatch(ProcessContextParameter p);
       ResultT dispatch(OnTimerContextParameter p);
+      ResultT dispatch(OnWindowExpirationContextParameter p);
       ResultT dispatch(WindowParameter p);
       ResultT dispatch(RestrictionTrackerParameter p);
       ResultT dispatch(StateParameter p);
@@ -246,6 +249,11 @@ public abstract class DoFnSignature {
 
         @Override
         public ResultT dispatch(OnTimerContextParameter p) {
+          return dispatchDefault(p);
+        }
+
+        @Override
+        public ResultT dispatch(OnWindowExpirationContextParameter p) {
           return dispatchDefault(p);
         }
 
@@ -285,6 +293,8 @@ public abstract class DoFnSignature {
           new AutoValue_DoFnSignature_Parameter_ProcessContextParameter();
     private static final OnTimerContextParameter ON_TIMER_CONTEXT_PARAMETER =
         new AutoValue_DoFnSignature_Parameter_OnTimerContextParameter();
+    private static final OnWindowExpirationContextParameter ON_WINDOW_EXPIRATION_CONTEXT_PARAMETER =
+        new AutoValue_DoFnSignature_Parameter_OnWindowExpirationContextParameter();
 
     /** Returns a {@link ProcessContextParameter}. */
     public static ProcessContextParameter processContext() {
@@ -294,6 +304,11 @@ public abstract class DoFnSignature {
     /** Returns a {@link OnTimerContextParameter}. */
     public static OnTimerContextParameter onTimerContext() {
       return ON_TIMER_CONTEXT_PARAMETER;
+    }
+
+    /** Returns a {@link OnTimerContextParameter}. */
+    public static OnWindowExpirationContextParameter onWindowExpirationContext() {
+      return ON_WINDOW_EXPIRATION_CONTEXT_PARAMETER;
     }
 
     /** Returns a {@link WindowParameter}. */
@@ -371,6 +386,17 @@ public abstract class DoFnSignature {
     public abstract static class OnTimerContextParameter extends Parameter {
       OnTimerContextParameter() {}
     }
+
+    /**
+     * Descriptor for a {@link Parameter} of type {@link DoFn.OnTimerContext}.
+     *
+     * <p>All such descriptors are equal.
+     */
+    @AutoValue
+    public abstract static class OnWindowExpirationContextParameter extends Parameter {
+      OnWindowExpirationContextParameter() {}
+    }
+
     /**
      * Descriptor for a {@link Parameter} of type {@link BoundedWindow}.
      *

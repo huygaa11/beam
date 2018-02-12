@@ -59,7 +59,7 @@ public class LateDataUtils {
     // } else {
     //   return window.maxTimestamp().plus(allowedLateness);
     // }
-    return window.maxTimestamp().plus(allowedLateness);
+    return window.maxTimestamp();
   }
 
   /**

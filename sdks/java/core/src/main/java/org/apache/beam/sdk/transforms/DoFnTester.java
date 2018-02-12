@@ -36,6 +36,7 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.state.Timer;
 import org.apache.beam.sdk.transforms.DoFn.OnTimerContext;
+import org.apache.beam.sdk.transforms.DoFn.OnWindowExpirationContext;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvoker;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvokers;
 import org.apache.beam.sdk.transforms.reflect.DoFnSignature;
@@ -316,6 +317,12 @@ public class DoFnTester<InputT, OutputT> implements AutoCloseable {
             @Override
             public OnTimerContext onTimerContext(DoFn<InputT, OutputT> doFn) {
               throw new UnsupportedOperationException("DoFnTester doesn't support timers yet.");
+            }
+
+            @Override
+            public OnWindowExpirationContext onWindowExpirationContext(DoFn<InputT, OutputT> doFn) {
+              throw new UnsupportedOperationException(
+                  "Not expected to access RestrictionTracker from a regular DoFn in DoFnTester");
             }
 
             @Override
