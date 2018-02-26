@@ -46,6 +46,17 @@ rsync -a --exclude cookbook --exclude complete --exclude '*IT.java'  \
     --delete
 
 #
+# Copy in MinimalWordCountJava8 and mobile gaming example
+#
+rsync -a                                                              \
+    "${EXAMPLES_ROOT}"/src/main/java/org/apache/beam/examples/  \
+    "${ARCHETYPE_ROOT}/src/main/java"
+
+rsync -a                                                              \
+    "${EXAMPLES_ROOT}"/src/test/java/org/apache/beam/examples/  \
+    "${ARCHETYPE_ROOT}/src/test/java"
+
+#
 # Replace 'package org.apache.beam.examples' with 'package ${package}' in all Java code
 #
 find "${ARCHETYPE_ROOT}/src/main/java" -name '*.java' -print0 \
