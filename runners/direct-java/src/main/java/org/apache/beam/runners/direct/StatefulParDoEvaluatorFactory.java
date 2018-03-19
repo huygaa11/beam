@@ -64,7 +64,10 @@ final class StatefulParDoEvaluatorFactory<K, InputT, OutputT> implements Transfo
 
   private final ParDoEvaluatorFactory<KV<K, InputT>, OutputT> delegateFactory;
 
+  private final EvaluationContext evaluationContext;
+
   StatefulParDoEvaluatorFactory(EvaluationContext evaluationContext) {
+    this.evaluationContext = evaluationContext;
     this.delegateFactory =
         new ParDoEvaluatorFactory<>(
             evaluationContext,
@@ -136,7 +139,12 @@ final class StatefulParDoEvaluatorFactory<K, InputT, OutputT> implements Transfo
             application.getTransform().getMainOutputTag(),
             application.getTransform().getAdditionalOutputTags().getAll());
 
-    return new StatefulParDoEvaluator<>(delegateEvaluator);
+    DirectStepContext stepContext =
+        evaluationContext
+            .getExecutionContext(application, inputBundle.getKey())
+            .getStepContext(evaluationContext.getStepName(application));
+
+    return new StatefulParDoEvaluator<>(delegateEvaluator, stepContext);
   }
 
   private class CleanupSchedulingLoader
@@ -232,10 +240,13 @@ final class StatefulParDoEvaluatorFactory<K, InputT, OutputT> implements Transfo
       implements TransformEvaluator<KeyedWorkItem<K, KV<K, InputT>>> {
 
     private final DoFnLifecycleManagerRemovingTransformEvaluator<KV<K, InputT>> delegateEvaluator;
+    private final DirectStepContext stepContext;
 
     public StatefulParDoEvaluator(
-        DoFnLifecycleManagerRemovingTransformEvaluator<KV<K, InputT>> delegateEvaluator) {
+        DoFnLifecycleManagerRemovingTransformEvaluator<KV<K, InputT>> delegateEvaluator,
+        DirectStepContext stepContext) {
       this.delegateEvaluator = delegateEvaluator;
+      this.stepContext = stepContext;
     }
 
     @Override
@@ -262,11 +273,20 @@ final class StatefulParDoEvaluatorFactory<K, InputT, OutputT> implements Transfo
     public TransformResult<KeyedWorkItem<K, KV<K, InputT>>> finishBundle() throws Exception {
       TransformResult<KV<K, InputT>> delegateResult = delegateEvaluator.finishBundle();
 
+      StepTransformResult.Builder<KeyedWorkItem<K, KV<K, InputT>>> resultBuilder;
+      CopyOnAccessInMemoryStateInternals state = stepContext.commitState();
+      if (state != null) {
+        resultBuilder =
+            StepTransformResult.<KeyedWorkItem<K, KV<K, InputT>>>withHold(
+                    delegateResult.getTransform(), state.getEarliestWatermarkHold())
+                .withState(state);
+      } else {
+        resultBuilder = StepTransformResult.withoutHold(delegateResult.getTransform());
+      }
+
       StepTransformResult.Builder<KeyedWorkItem<K, KV<K, InputT>>> regroupedResult =
-          StepTransformResult.<KeyedWorkItem<K, KV<K, InputT>>>withHold(
-                  delegateResult.getTransform(), delegateResult.getWatermarkHold())
+          resultBuilder
               .withTimerUpdate(delegateResult.getTimerUpdate())
-              .withState(delegateResult.getState())
               .withMetricUpdates(delegateResult.getLogicalMetricUpdates())
               .addOutput(Lists.newArrayList(delegateResult.getOutputBundles()));
 

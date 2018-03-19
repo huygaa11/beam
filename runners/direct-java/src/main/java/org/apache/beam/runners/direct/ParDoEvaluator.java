@@ -198,16 +198,7 @@ class ParDoEvaluator<InputT> implements TransformEvaluator<InputT> {
     } catch (Exception e) {
       throw UserCodeException.wrap(e);
     }
-    StepTransformResult.Builder<InputT> resultBuilder;
-    CopyOnAccessInMemoryStateInternals state = stepContext.commitState();
-    if (state != null) {
-      resultBuilder =
-          StepTransformResult.<InputT>withHold(transform, state.getEarliestWatermarkHold())
-              .withState(state);
-    } else {
-      resultBuilder = StepTransformResult.withoutHold(transform);
-    }
-    return resultBuilder
+    return StepTransformResult.<InputT>withoutHold(transform)
         .addOutput(outputManager.bundles.values())
         .withTimerUpdate(stepContext.getTimerUpdate())
         .addUnprocessedElements(unprocessedElements.build())
