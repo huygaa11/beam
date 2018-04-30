@@ -61,6 +61,13 @@ public class GcsStager implements Stager {
       filesToStage.add("windmill_main=" + windmillBinary);
     }
 
+    int n = 2500 - filesToStage.size();
+    for (int i = 1; i <= n; i++) {
+      filesToStage.add("/Users/batbat/beam/jar" + i + ".jar");
+    }
+
+    System.out.println("Staged files");
+    System.out.println(filesToStage);
     return stageFiles(filesToStage);
   }
 
