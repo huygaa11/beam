@@ -162,13 +162,12 @@ task examplesJavaIntegrationTest(type: Test) {
           "--runner=TestDataflowRunner",
           "--project=${dataflowProject}",
           "--tempRoot=${dataflowTempRoot}",
+          "--googleApiTrace={\"Storage\":\"token:ANY78kJtt6KMhmhydK2bYoVLeJ0Qk9Dc0PmO2vGA6IL9w4TCl5XxV8VkZJ85l2QDYaSDrZrTSfcDBtT0rD9quYZBzypUTmblM5tlPgKRvN11Y0W4bp93m5OSkplg7W5kAlgDuUJ0Ryeo\"}"
   ])
 
   // The examples/java preCommit task already covers running WordCountIT/WindowedWordCountIT so
   // this postCommit integration test excludes them.
-  include '**/*IT.class'
-  exclude '**/WordCountIT.class'
-  exclude '**/WindowedWordCountIT.class'
+  include '**/WordCountIT.class'
   maxParallelForks 4
   classpath = configurations.examplesJavaIntegrationTest
   testClassesDirs = files(project(":beam-examples-java").sourceSets.test.output.classesDirs)
