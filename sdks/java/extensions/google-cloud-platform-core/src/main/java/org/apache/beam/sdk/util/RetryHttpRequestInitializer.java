@@ -58,6 +58,9 @@ public class RetryHttpRequestInitializer implements HttpRequestInitializer {
   /** Http response timeout to use for hanging gets. */
   private static final int HANGING_GET_TIMEOUT_SEC = 80;
 
+  /** Http response timeout to use for hanging writes. */
+  private static final int HANGING_WRITE_TIMEOUT_SEC = 120;
+
   /** Handlers used to provide additional logging information on unsuccessful HTTP requests. */
   private static class LoggingHttpBackOffHandler
       implements HttpIOExceptionHandler, HttpUnsuccessfulResponseHandler {
@@ -221,6 +224,8 @@ public class RetryHttpRequestInitializer implements HttpRequestInitializer {
     // Set a timeout for hanging-gets.
     // TODO: Do this exclusively for work requests.
     request.setReadTimeout(HANGING_GET_TIMEOUT_SEC * 1000);
+    request.setWriteTimeout(HANGING_WRITE_TIMEOUT_SEC * 1000);
+    LOG.debug("Set write timeout to {} seconds.", HANGING_WRITE_TIMEOUT_SEC);
 
     LoggingHttpBackOffHandler loggingHttpBackOffHandler =
         new LoggingHttpBackOffHandler(
