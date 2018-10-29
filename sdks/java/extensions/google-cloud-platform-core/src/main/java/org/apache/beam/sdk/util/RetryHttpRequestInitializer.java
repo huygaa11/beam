@@ -87,6 +87,18 @@ public class RetryHttpRequestInitializer implements HttpRequestInitializer {
       // Note that the order of these checks is important since
       // backOffWasSuccessful will perform a sleep.
       boolean willRetry = supportsRetry && backOffWasSuccessful(ioExceptionBackOff);
+
+      // Temporary hack until the Apiary team provides fix.
+      if (supportsRetry && !willRetry && ioExceptionRetries == 0) {
+        if (ioExceptionBackOff instanceof ExponentialBackOff) {
+          LOG.warn(
+              "Resettable IOException took {} milliseconds.",
+              ((ExponentialBackOff) ioExceptionBackOff).getElapsedTimeMillis());
+        }
+        willRetry = true;
+        ioExceptionBackOff.reset();
+      }
+
       if (willRetry) {
         ioExceptionRetries += 1;
         LOG.debug("Request failed with IOException, will retry: {}", request.getUrl());
@@ -117,6 +129,20 @@ public class RetryHttpRequestInitializer implements HttpRequestInitializer {
           supportsRetry
               && retryOnStatusCode(response.getStatusCode())
               && backOffWasSuccessful(unsuccessfulResponseBackOff);
+
+      if (!willRetry
+          && supportsRetry
+          && retryOnStatusCode(response.getStatusCode())
+          && unsuccessfulResponseRetries == 0) {
+        if (unsuccessfulResponseBackOff instanceof ExponentialBackOff) {
+          LOG.debug(
+              "Resettable failure took {} milliseconds and failed.",
+              ((ExponentialBackOff) unsuccessfulResponseBackOff).getElapsedTimeMillis());
+        }
+        willRetry = true;
+        unsuccessfulResponseBackOff.reset();
+      }
+
       if (willRetry) {
         unsuccessfulResponseRetries += 1;
         LOG.debug(
